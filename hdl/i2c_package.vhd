@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.NUMERIC_STD.ALL;
 
-package i2c_types is
+package i2c_package is
 
 	--Constants
 	constant SLV_ADDR_WIDTH : integer := 7; -- Code would need to be modified to implement 10 bit.
@@ -21,9 +21,9 @@ package i2c_types is
 	-- This function could be written unbounded, however bonds are given to ensure we don't synthesize 32 bit registers!
 	function check_in_range(address : std_logic_vector(D_WIDTH-1 downto 0); num_regs : integer range 0 to (2**D_WIDTH); offset : std_logic_vector(D_WIDTH-1 downto 0)) return boolean;
 
-end i2c_types;
+end i2c_package;
 
-package body i2c_types is
+package body i2c_package is
 
 
 	function check_in_range(address : std_logic_vector(D_WIDTH-1 downto 0); num_regs : integer range 0 to (2**D_WIDTH); offset : std_logic_vector(D_WIDTH-1 downto 0)) return boolean is

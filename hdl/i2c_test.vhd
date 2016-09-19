@@ -2,19 +2,19 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
 
-use work.i2c_types.all;
+use work.i2c_package.all;
 use work.i2c_test_package.all;
  
-ENTITY i2c_top_test IS
+ENTITY i2c_test IS
     Generic ( no_read_regs : integer := 8;
 	           no_write_regs : integer := 8;
 	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0) := "0000001");
-END i2c_top_test;
+END i2c_test;
  
-ARCHITECTURE behavior OF i2c_top_test IS 
+ARCHITECTURE behavior OF i2c_test IS 
  
     -- Component Declaration for the Unit Under Test (UUT)
-    COMPONENT i2c_top
+    COMPONENT i2c
     Generic ( no_read_regs : integer := no_read_regs;
 	           no_write_regs : integer := no_write_regs;
 	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0) := module_addr);
@@ -42,7 +42,7 @@ ARCHITECTURE behavior OF i2c_top_test IS
 BEGIN
  
 	-- Instantiate the Unit Under Test (UUT)
-   uut: i2c_top PORT MAP (
+   uut: i2c PORT MAP (
           sda => sda,
 			 sda_wen => sda_wen,
           scl => scl,

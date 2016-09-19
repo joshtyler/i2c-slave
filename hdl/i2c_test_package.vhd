@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 
-use work.i2c_types.all;
+use work.i2c_package.all;
 
 package i2c_test_package is
 

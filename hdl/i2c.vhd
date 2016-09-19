@@ -2,9 +2,9 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-use work.i2c_types.all;
+use work.i2c_package.all;
 
-entity i2c_top is
+entity i2c is
     Generic ( no_read_regs : integer range 0 to 128; --Address space is 0x0 to 0x7F. 128 combinations
 	           no_write_regs : integer range 0 to 128; --Address space is 0x80 to 0xFF. 128 combinations
 	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0));
@@ -13,9 +13,9 @@ entity i2c_top is
            scl : in  STD_LOGIC;
            read_regs : in  array8 (0 to no_read_regs-1);
            write_regs : out  array8 (0 to no_write_regs-1));
-end i2c_top;
+end i2c;
 
-architecture Behavioral of i2c_top is
+architecture Behavioral of i2c is
 	
 	-- Top level state machine
 	type sm_type is (SM_RECEIVE, SM_SEND, SM_SEND_ACK, SM_RECEIVE_ACK, SM_WAIT);
