@@ -5,14 +5,14 @@ use IEEE.NUMERIC_STD.ALL;
 use work.i2c_package.all;
 
 entity i2c is
-    Generic ( no_read_regs : integer range 0 to 128; --Address space is 0x0 to 0x7F. 128 combinations
-	           no_write_regs : integer range 0 to 128; --Address space is 0x80 to 0xFF. 128 combinations
+    Generic ( no_ro_regs : integer range 0 to 128; --Address space is 0x0 to 0x7F. 128 combinations
+	           no_rw_regs : integer range 0 to 128; --Address space is 0x80 to 0xFF. 128 combinations
 	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0));
     Port ( sda : in  STD_LOGIC;
            sda_wen : out STD_LOGIC;
            scl : in  STD_LOGIC;
-           read_regs : in  array8 (0 to no_read_regs-1);
-           write_regs : out  array8 (0 to no_write_regs-1));
+           ro_regs : in  array8 (0 to no_ro_regs-1);
+           rw_regs : out  array8 (0 to no_rw_regs-1));
 end i2c;
 
 architecture Behavioral of i2c is
@@ -41,13 +41,13 @@ architecture Behavioral of i2c is
 	
 	--Intermediatory signals to allow readback of output
 	signal sda_wen_buf : std_logic := '0'; --Init to 0 to not drive line
-	signal write_regs_buf : array8 (0 to no_write_regs-1);
+	signal rw_regs_buf : array8 (0 to no_rw_regs-1);
 --
 begin
 
 	--Intermediatory signals to allow readback of output
 	sda_wen <= sda_wen_buf;
-	write_regs <= write_regs_buf;
+	rw_regs <= rw_regs_buf;
 
 	-- Detect start condition
 	detect_start : process(sda)
@@ -119,8 +119,8 @@ begin
 								reg_addr <= data(D_WIDTH-2 downto 0) & sda;
 								receive_state <= REC_SM_DATA;
 							when REC_SM_DATA =>
-								if check_in_range(reg_addr, no_write_regs, WRITE_REG_OFFSET) then
-									write_regs_buf(to_integer(unsigned(reg_addr))) <= data(D_WIDTH-2 downto 0) & sda;
+								if check_in_range(reg_addr, no_rw_regs, RW_REG_OFFSET) then
+									rw_regs_buf(to_integer(unsigned(reg_addr))) <= data(D_WIDTH-2 downto 0) & sda;
 									reg_addr <= std_logic_vector(unsigned(reg_addr) + 1);
 								else
 									top_state <= SM_WAIT; -- Out of range, so do not ack and wait for next transaction
@@ -137,7 +137,7 @@ begin
 					if mode = MD_RECEIVE then
 						--If we're going to receive data
 						top_state <= SM_RECEIVE;
-					elsif check_in_range(reg_addr, no_write_regs, WRITE_REG_OFFSET) or check_in_range(reg_addr, no_read_regs, READ_REG_OFFSET) then
+					elsif check_in_range(reg_addr, no_rw_regs, RW_REG_OFFSET) or check_in_range(reg_addr, no_ro_regs, RO_REG_OFFSET) then
 						--If we're going to send data and are in range
 						top_state <= SM_SEND;
 					else
@@ -148,7 +148,7 @@ begin
 				when SM_SEND =>
 					if send_ctr = 1 then
 						--We've transmitted the entire word, check for ack
-						if sda = '0' and (check_in_range(std_logic_vector(unsigned(reg_addr) + 1), no_write_regs, WRITE_REG_OFFSET) or check_in_range(std_logic_vector(unsigned(reg_addr) + 1), no_read_regs, READ_REG_OFFSET)) then
+						if sda = '0' and (check_in_range(std_logic_vector(unsigned(reg_addr) + 1), no_rw_regs, RW_REG_OFFSET) or check_in_range(std_logic_vector(unsigned(reg_addr) + 1), no_ro_regs, RO_REG_OFFSET)) then
 							--Master ACK and next register would be in range
 							reg_addr <= std_logic_vector(unsigned(reg_addr) + 1);
 						else
@@ -182,10 +182,10 @@ begin
 							send_ctr <= 1; --Set to 1 to make indexing nice
 						else
 							--Check if we are in the read only portion, or the read/write portion of memory
-							if check_in_range(reg_addr, no_write_regs, WRITE_REG_OFFSET) then
-								current_data := write_regs_buf(to_integer(unsigned(reg_addr(D_WIDTH-2 downto 0))));
+							if check_in_range(reg_addr, no_rw_regs, RW_REG_OFFSET) then
+								current_data := rw_regs_buf(to_integer(unsigned(reg_addr(D_WIDTH-2 downto 0))));
 							else
-								current_data := read_regs(to_integer(unsigned(reg_addr(D_WIDTH-2 downto 0))));
+								current_data := ro_regs(to_integer(unsigned(reg_addr(D_WIDTH-2 downto 0))));
 							end if;
 							--Send data MSB first
 							sda_wen_buf <= not current_data(D_WIDTH-send_ctr);

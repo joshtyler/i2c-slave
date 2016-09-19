@@ -10,8 +10,8 @@ package i2c_package is
 	
 	--NOTE. THESE OFFSETS CANNOT BE CHANGED WIHTOUT FURTHER MODIFICATION TO THE CODE
 	--This is due to taking advantage of efficiencies due to the transition being at 0x80
-	constant WRITE_REG_OFFSET : std_logic_vector(D_WIDTH-1 downto 0) := B"0000_0000"; --Read/write register offset
-	constant READ_REG_OFFSET : std_logic_vector(D_WIDTH-1 downto 0) := B"1000_0000"; --Read only register offset
+	constant RW_REG_OFFSET : std_logic_vector(D_WIDTH-1 downto 0) := B"0000_0000"; --Read/write register offset
+	constant RO_REG_OFFSET : std_logic_vector(D_WIDTH-1 downto 0) := B"1000_0000"; --Read only register offset
 
 	--Types
 	type array8 is array (natural range <>) of std_logic_vector(D_WIDTH-1 downto 0); --Store registers
@@ -39,4 +39,4 @@ package body i2c_package is
 	
 	end check_in_range;
 
-end i2c_types;
+end i2c_package;

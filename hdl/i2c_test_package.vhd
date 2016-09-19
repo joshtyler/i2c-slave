@@ -11,9 +11,9 @@ package i2c_test_package is
 
 	-- Declare functions and procedure
 	-- Only make 'top level' functions visible
-	procedure READ_FROM_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); variable data : out array8);
-	procedure WRITE_TO_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); constant data : in array8);
-
+	procedure READ_FROM_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); variable data : out array8; constant expect_ack : in boolean);
+	procedure WRITE_TO_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); constant data : in array8; constant expect_ack : in boolean);
+	procedure ADDRESS_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant write_mode : in boolean; constant expect_ack : in boolean);
 
 end i2c_test_package;
 
@@ -48,7 +48,7 @@ package body i2c_test_package is
 		wait for scl_period/2;
 	end STOP_TO_BUS;
 	
-	procedure DATA_TO_BUS( signal sda : inout std_logic; signal scl : inout std_logic; constant data : in std_logic_vector(D_WIDTH-1 downto 0)) is
+	procedure DATA_TO_BUS( signal sda : inout std_logic; signal scl : inout std_logic; constant data : in std_logic_vector(D_WIDTH-1 downto 0); constant expect_ack : in boolean) is
 	begin
 		--As a prequisite, SCL must be 0
 		--We are assumed to be right at the start of a clock period, just after the falling edge
@@ -71,12 +71,16 @@ package body i2c_test_package is
 		wait for scl_period/2;
 		scl <= '1';
 		wait for scl_period/4;
-		assert sda = '0' report "Slave did not ack" severity failure;
+		if expect_ack then
+			assert sda = '0' report "DATA_TO_BUS: Slave DID NOT ack." severity failure;
+		else
+			assert sda = '1' or sda = 'H' report "DATA_TO_BUS: Slave DID ack." severity failure;
+		end if;
 		wait for scl_period/4;
 		scl <= '0';
 	end DATA_TO_BUS;
 	
-	procedure ADDR_TO_BUS( signal sda : inout std_logic; signal scl : inout std_logic; constant addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant write_mode : in Boolean) is
+	procedure ADDR_TO_BUS( signal sda : inout std_logic; signal scl : inout std_logic; constant addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant write_mode : in Boolean; constant expect_ack : in boolean) is
 		variable data : std_logic_vector(D_WIDTH-1 downto 0);
 	begin
 		if write_mode = true then
@@ -85,18 +89,18 @@ package body i2c_test_package is
 			data := addr & '1';
 		end if;
 		
-		DATA_TO_BUS(sda, scl, data);
+		DATA_TO_BUS(sda, scl, data, expect_ack);
 	
 	
 	end procedure ADDR_TO_BUS;
 	
-	procedure WRITE_TO_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); constant data : in array8) is
+	procedure WRITE_TO_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); constant data : in array8; constant expect_ack : in boolean) is
 	begin
       START_TO_BUS(sda,scl);
-		ADDR_TO_BUS(sda, scl, slv_addr , true );
-		DATA_TO_BUS(sda, scl, reg_addr);
+		ADDR_TO_BUS(sda, scl, slv_addr , true, true );
+		DATA_TO_BUS(sda, scl, reg_addr, true);
 		for i in 0 to data'LENGTH-1 loop
-			DATA_TO_BUS(sda, scl, data(i));
+			DATA_TO_BUS(sda, scl, data(i), expect_ack); --Expect slave to not ack here if invalid address
 		end loop;
 		STOP_TO_BUS(sda,scl);
 	end procedure WRITE_TO_SLAVE;
@@ -132,13 +136,13 @@ package body i2c_test_package is
 		scl <= '0';
 	end DATA_FROM_BUS;
 	
-	procedure READ_FROM_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); variable data : out array8) is
+	procedure READ_FROM_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant reg_addr : in std_logic_vector(D_WIDTH-1 downto 0); variable data : out array8; constant expect_ack : in boolean) is
 	begin
       START_TO_BUS(sda,scl);
-		ADDR_TO_BUS(sda,scl, slv_addr , true );
-		DATA_TO_BUS(sda, scl, reg_addr);
+		ADDR_TO_BUS(sda,scl, slv_addr , true, true );
+		DATA_TO_BUS(sda, scl, reg_addr, true);
       START_TO_BUS(sda,scl);
-		ADDR_TO_BUS(sda,scl, slv_addr , false );
+		ADDR_TO_BUS(sda,scl, slv_addr , false, expect_ack ); --Expect slave to not ack here if invalid address
 		for i in 0 to data'LENGTH-1 loop
 			if i = data'LENGTH-1 then
 				DATA_FROM_BUS(sda, scl, data(i),false);
@@ -148,5 +152,11 @@ package body i2c_test_package is
 		end loop;
 		STOP_TO_BUS(sda,scl);
 	end procedure READ_FROM_SLAVE;
- 
+	
+	procedure ADDRESS_SLAVE( signal sda : inout std_logic; signal scl : inout std_logic; constant slv_addr : in std_logic_vector(SLV_ADDR_WIDTH-1 downto 0); constant write_mode : in boolean; constant expect_ack : in boolean) is
+	begin
+		START_TO_BUS(sda,scl);
+		ADDR_TO_BUS(sda,scl, slv_addr , write_mode, expect_ack );
+		STOP_TO_BUS(sda,scl);
+	end procedure ADDRESS_SLAVE;
 end i2c_test_package;
