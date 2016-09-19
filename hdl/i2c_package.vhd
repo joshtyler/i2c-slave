@@ -32,6 +32,10 @@ package body i2c_package is
 		if to_integer(unsigned(address)) > (to_integer(unsigned(offset)) + num_regs - 1) then
 			--Out of range
 			return false;
+		-- If the address given is lower than the base address 
+		elsif to_integer(unsigned(address)) < (to_integer(unsigned(offset))) then
+			--Out of range
+			return false;
 		else
 			--In range
 			return true;

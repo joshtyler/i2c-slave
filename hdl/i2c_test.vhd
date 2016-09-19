@@ -109,6 +109,18 @@ BEGIN
 		end loop;
 		report "Reading RO Regs test completed";
 
+		--Test writing invalid register
+		WRITE_TO_SLAVE(sda, scl, module_addr, "01110101", test_write_regs, false ); --Should fail as only 8 RW regs
+		WRITE_TO_SLAVE(sda, scl, module_addr, "11110101", test_write_regs, false ); --Should fail as only 8 RO regs
+		wait for 10ms;
+		report "Invalid writing test completed";
+
+		--Test read invalid register
+		READ_FROM_SLAVE(sda, scl, module_addr, "01110101", test_read_regs, false ); --Should fail as only 8 RW regs
+		READ_FROM_SLAVE(sda, scl, module_addr, "11110101", test_read_regs, false ); --Should fail as only 8 RO regs
+		wait for 10ms;
+		report "Invalid reading test completed";	
+		
       wait;
    end process;
 

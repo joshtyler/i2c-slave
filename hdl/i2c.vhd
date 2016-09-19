@@ -109,6 +109,10 @@ begin
 									-- Save whether read or write mode
 									if sda = '1' then
 										mode <= MD_SEND;
+										if not(check_in_range(reg_addr, no_rw_regs, RW_REG_OFFSET) or check_in_range(reg_addr, no_ro_regs, RO_REG_OFFSET)) then
+											--If the requested register is out of range
+											top_state <= SM_WAIT;
+										end if;
 									else
 										mode <= MD_RECEIVE;
 									end if;
@@ -135,14 +139,9 @@ begin
 				when SM_SEND_ACK =>
 					--Sent in external process
 					if mode = MD_RECEIVE then
-						--If we're going to receive data
 						top_state <= SM_RECEIVE;
-					elsif check_in_range(reg_addr, no_rw_regs, RW_REG_OFFSET) or check_in_range(reg_addr, no_ro_regs, RO_REG_OFFSET) then
-						--If we're going to send data and are in range
-						top_state <= SM_SEND;
 					else
-						--If the requested register is out of range
-						top_state <= SM_WAIT;
+						top_state <= SM_SEND;
 					end if;
 				
 				when SM_SEND =>
