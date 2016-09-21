@@ -17,27 +17,27 @@ end i2c;
 
 architecture Behavioral of i2c is
 	
-	-- Top level state machine
+	-- Top level state machine definition
 	type sm_type is (SM_RECEIVE, SM_SEND, SM_SEND_ACK, SM_RECEIVE_ACK, SM_WAIT);
 	signal top_state : sm_type;
 
-	-- Receive state machine
+	-- Receive state machine definition
 	type rec_sm_type is (REC_SM_SLV_ADDR, REC_SM_REG_ADDR, REC_SM_DATA);
 	signal receive_state : rec_sm_type;
 	
+	--State machine signals
 	type mode_type is (MD_RECEIVE, MD_SEND);
 	signal mode : mode_type;
-	
 	signal data : std_logic_vector(D_WIDTH-1 downto 0); -- General purpose register to store received word
 	signal reg_addr : std_logic_vector(D_WIDTH-1 downto 0);
 	signal receive_ctr : integer range 0 to D_WIDTH-1;
 	signal send_ctr : integer range 1 to D_WIDTH+1 := 1; --Go to D_WIDTH+2 as we need to count up to ACK. We must initialise to make first send work correctly
 	
+	--Start and stop detection signals
 	signal start_condition : std_logic := '0'; -- Pulses when start condition detected, init to none
 	signal stop_condition : std_logic := '0'; -- Pulses when stop condition detected, init to none
-	
-	type status_type is (ST_STOPPED, ST_STARTED);
-	signal status : status_type := ST_STOPPED; -- Init to stopped
+	signal start_reset : std_logic := '0'; --Signal to reset start_condition after one clock cycle
+	signal stop_reset : std_logic := '0'; --Signal to reset stop_condition after one clock cycle
 	
 	--Intermediatory signals to allow readback of output
 	signal sda_wen_buf : std_logic := '0'; --Init to 0 to not drive line
@@ -49,51 +49,67 @@ begin
 	sda_wen <= sda_wen_buf;
 	rw_regs <= rw_regs_buf;
 
-	-- Detect start condition
-	detect_start : process(sda)
+	-- Detect start condition. Reset on first rising edge of SCL.
+	detect_start : process(sda, start_reset)
 	begin
-	
-		if falling_edge(sda) then
-			if scl = '1' and sda_wen_buf = '0' then -- Stop from triggering based on ACK
+		if start_reset = '1' then
+			start_condition <= '0';
+		elsif falling_edge(sda) then
+			if scl = '1' then
 				start_condition <= '1';
-			else 
-				start_condition <= '0';
 			end if;
 		end if;
 	end process detect_start;
 	
-	-- Detect stop condition
-	detect_stop : process(sda)
+	reset_start : process(scl)
 	begin
-		if rising_edge(sda) then
-			if scl = '1' and sda_wen_buf = '0' then -- Stop from triggering based on ACK
+		if rising_edge(scl) then
+			if start_condition = '1' then
+				start_reset <= '1';
+			else
+				start_reset <= '0';
+			end if;
+		end if;
+	end process reset_start;
+	
+	-- Detect stop condition. Reset on first rising edge of SCL.
+	detect_stop : process(sda, stop_reset)
+	begin
+		if stop_reset = '1' then
+			stop_condition <= '0';
+		elsif rising_edge(sda) then
+			if scl = '1'  then
 				stop_condition <= '1';
-			else 
-				stop_condition <= '0';
 			end if;
 		end if;
 	end process detect_stop;
 	
-	
-	-- Set status
-	set_status : process(start_condition, stop_condition)
+	reset_stop : process(scl)
 	begin
-		if rising_edge(start_condition) then
-			status <= ST_STARTED;
-		elsif rising_edge(stop_condition) then
-			status <= ST_STOPPED;
+		if rising_edge(scl) then
+			if stop_condition = '1' then
+				stop_reset <= '1';
+			else
+				stop_reset <= '0';
+			end if;
 		end if;
-	end process set_status;
+	end process reset_stop;	
 
 
-	main_sm : process(scl, start_condition)
+	main_sm : process(scl, start_condition, stop_condition)
 	begin
-		if rising_edge(start_condition) then
+		--Reset if start condition is 1
+		if start_condition = '1' then
 			-- Reset
 			top_state <= SM_RECEIVE;
 			receive_state <= REC_SM_SLV_ADDR;
 			receive_ctr <= 0;
-		elsif rising_edge(scl) and status = ST_STARTED then -- Proceed on errors, so that we can output them!
+		end if;
+		
+		-- Run main state machine when not stopped
+		-- stop_condition = '1' and start_condition = '1' is the exception because this means that this scl edge is the first edge of a new transaction
+		-- Note the logic here could be expressed more compactly but is left verbose for clarity
+		if rising_edge(scl) and (stop_condition = '0' or (stop_condition = '1' and start_condition = '1')) then
 			case top_state is
 				--Receive module address
 				when SM_RECEIVE =>
