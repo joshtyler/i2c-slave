@@ -1,0 +1,3 @@
+[submodule "hdl/debounce"]
+	path = hdl/debounce
+	url = https://github.com/joshtyler/debounce
