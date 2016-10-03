@@ -8,7 +8,10 @@ use work.i2c_test_package.all;
 ENTITY i2c_test IS
     Generic ( no_ro_regs : integer := 8;
 	           no_rw_regs : integer := 8;
-	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0) := "0000001");
+	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0) := "0000001";
+				  sample_clock_frequency : integer := 66_700_000;  --66.7MHz oscillator
+				  i2c_settling_time : time := 500ns --Reasonable for standard mode 100kbit/s
+				  );
 END i2c_test;
  
 ARCHITECTURE behavior OF i2c_test IS 
@@ -17,8 +20,11 @@ ARCHITECTURE behavior OF i2c_test IS
     COMPONENT i2c
     Generic ( no_ro_regs : integer := no_ro_regs;
 	           no_rw_regs : integer := no_rw_regs;
-	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0) := module_addr);
+	           module_addr : STD_LOGIC_VECTOR(SLV_ADDR_WIDTH-1 downto 0) := module_addr;
+				  sample_clock_frequency : integer := sample_clock_frequency;
+				  i2c_settling_time : time := i2c_settling_time);
     PORT(
+			clk : IN std_logic;
          sda : IN  std_logic;
 			sda_wen : OUT STD_LOGIC;
          scl : IN  std_logic;
@@ -31,6 +37,7 @@ ARCHITECTURE behavior OF i2c_test IS
    --Inputs
    signal scl : std_logic := '1';
    signal ro_regs : array8 (0 to no_ro_regs-1);
+	signal clk : std_logic := '0';
 
 	--BiDirs
    signal sda : std_logic;
@@ -41,11 +48,16 @@ ARCHITECTURE behavior OF i2c_test IS
 	
 	--Constants
 	constant test_ro_regs : array8 (0 to no_ro_regs-1) := (X"FF", X"00", X"AB", X"CD", X"DE", X"AD", X"BE", X"EF");
+	constant clk_period : time := (1.0/Real(sample_clock_frequency)) * 1 sec;
 
 BEGIN
+
+	--Simulate sample clock
+	clk <= not clk after clk_period/2;
  
 	-- Instantiate the Unit Under Test (UUT)
    uut: i2c PORT MAP (
+          clk => clk,
           sda => sda,
 			 sda_wen => sda_wen,
           scl => scl,

@@ -45,7 +45,7 @@ architecture Mixed of i2c is
 	
 	-- Module status
 	type status_type is (ST_STOPPED, ST_STARTED, ST_REP_STARTED);
-	signal status : status_type := SM_STOPPED;
+	signal status : status_type := ST_STOPPED;
 	signal status_change : std_logic := '1';
 	
 	--State machine signals
