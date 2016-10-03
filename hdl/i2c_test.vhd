@@ -119,7 +119,9 @@ BEGIN
 		READ_FROM_SLAVE(sda, scl, module_addr, "01110101", test_read_regs, false ); --Should fail as only 8 RW regs
 		READ_FROM_SLAVE(sda, scl, module_addr, "11110101", test_read_regs, false ); --Should fail as only 8 RO regs
 		wait for 10ms;
-		report "Invalid reading test completed";	
+		report "Invalid reading test completed";
+
+		report "Testing completed without fatal errors";
 		
       wait;
    end process;
